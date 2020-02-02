@@ -14,6 +14,7 @@ can be configured to use non-inverting-sbus, which is needed for the UART periph
 
 ## Wiring
 For the connection between the receiver and the MCU board, only three wires are needed.
+
 | Wire   | MCU side  |       Receiver side |
 | :----- | :-------- | ------------------: |
 | black  | GND       |                 GND |
