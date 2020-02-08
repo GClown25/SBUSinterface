@@ -9,6 +9,7 @@
 #define F_CPU 20000000UL
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <stdbool.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -23,6 +24,8 @@ uint8_t UartConsoleSend(uint8_t *data, uint16_t len, uint16_t timeout);
 int USARTconsolePrintCHAR(char character, FILE *stream);
 void _ErrorHandler(char *file, int line);
 
+void UartSBUSInit();
+
 
 #define USART_BAUD_RATE(BAUD_RATE) ((float)(F_CPU * 64 / (16 *(float)BAUD_RATE)) + 0.5)
 #define ErrorHandler() _ErrorHandler(__FILE__, __LINE__)
@@ -30,16 +33,23 @@ void _ErrorHandler(char *file, int line);
 FILE USARTconsoleStream = FDEV_SETUP_STREAM(USARTconsolePrintCHAR, NULL, _FDEV_SETUP_WRITE);
 
 
+sbusINFO sbusInfo;
+
 int main(void){
 	
 	SystemInit();
 	
+	PORTA.DIRSET = PIN3_bm;
+	
 	stdout = &USARTconsoleStream;
 	UartConsoleInit();	
 	
+	UartSBUSInit();
+	sei();
 	
 	while(1){
-		printf("Hello, World!\n");
+
+		//printf("Hello, World!\n");
 		_delay_ms(1000U);
 	}
 	
@@ -61,6 +71,36 @@ void UartConsoleInit(){
 	
 	USART2.BAUD = (uint16_t)USART_BAUD_RATE(115200);
 	USART2.CTRLB |= USART_TXEN_bm | USART_RXEN_bm;
+}
+
+void UartSBUSInit(){
+	
+	PORTMUX.USARTROUTEA = PORTMUX_USART1_ALT1_gc;
+	
+	USART1.BAUD = (uint16_t)USART_BAUD_RATE(100000);
+	USART1.CTRLA = USART_RXCIE_bm;
+	USART1.CTRLB = USART_RXEN_bm;
+	USART1.CTRLC = USART_PMODE_EVEN_gc | USART_SBMODE_2BIT_gc | USART_CHSIZE_8BIT_gc;
+}
+
+ISR(USART1_RXC_vect){
+	uint8_t dataL, dataH;
+	bool rxError, newFrame;
+	
+	dataH = USART1.RXDATAH;	// rx error flags
+	dataL = USART1.RXDATAL;	// data byte
+	
+	rxError = (dataH & (USART_BUFOVF_bm | USART_FERR_bm | USART_PERR_bm)) ? true : false;
+	
+	newFrame = sbusCallback(&sbusInfo, dataL, rxError);
+	
+	if(newFrame){
+		PORTA.OUTSET = PIN3_bm;
+		sbusExtract(&sbusInfo);	
+		printf("R:%i P:%i T:%i Y:%i\n", sbusInfo.channel[0], sbusInfo.channel[1], sbusInfo.channel[2], sbusInfo.channel[3]);
+		PORTA.OUTCLR = PIN3_bm;
+	}
+	
 }
 
 uint8_t UartConsoleSend(uint8_t *data, uint16_t len, uint16_t timeout){
