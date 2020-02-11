@@ -35,9 +35,20 @@ PA3 - as a output, which gets set and cleared withing the Uart Rx Interrupt, to 
 ## Channel mapping
 The channel mapping can be configured on the transmitter. In my case, it is a following:
 
-| Channel Nr. | Function |
-| :---------- | -------: |
-| 0           |     Roll |
-| 1           |    Pitch |
-| 2           | Throttle |
-| 3           |      Yaw |
+| Channel Nr. |     Function |
+| :---------- | -----------: |
+| 0           |         Roll |
+| 1           |        Pitch |
+| 2           |     Throttle |
+| 3           |          Yaw |
+| 4           |          Arm |
+| 5           |       Buzzer |
+| 6           |    Auxiliary |
+| 7           | Link Quality |
+
+## Timing
+  The crossfire receiver sends a new frame every 10ms. A frame is 3ms long.
+  The 'sbusCallback' function gets called in the uart rx interrupt when a new byte is received. In my setup, the executon time for this function is under 2.5us.
+
+  The sbusExtract function maps the received frame to the corresponding channels (0-15). It should be called after 'sbusCallback' returns true (a new sbus frame got received successfully). The execution time for the extract funtion is under 15us.
+

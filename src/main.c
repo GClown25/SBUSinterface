@@ -39,7 +39,7 @@ int main(void){
 	
 	SystemInit();
 	
-	PORTA.DIRSET = PIN3_bm;
+	PORTA.DIRSET = PIN3_bm | PIN2_bm;
 	
 	stdout = &USARTconsoleStream;
 	UartConsoleInit();	
@@ -92,13 +92,17 @@ ISR(USART1_RXC_vect){
 	
 	rxError = (dataH & (USART_BUFOVF_bm | USART_FERR_bm | USART_PERR_bm)) ? true : false;
 	
+	PORTA.OUTSET = PIN3_bm;
 	newFrame = sbusCallback(&sbusInfo, dataL, rxError);
+	PORTA.OUTCLR = PIN3_bm;	
 	
 	if(newFrame){
-		PORTA.OUTSET = PIN3_bm;
-		sbusExtract(&sbusInfo);	
-		printf("R:%i P:%i T:%i Y:%i\n", sbusInfo.channel[0], sbusInfo.channel[1], sbusInfo.channel[2], sbusInfo.channel[3]);
-		PORTA.OUTCLR = PIN3_bm;
+		PORTA.OUTSET = PIN2_bm;
+		sbusExtract(&sbusInfo);
+		PORTA.OUTCLR = PIN2_bm;	
+		printf("R:%i P:%i T:%i Y:%i arm:%i buz:%i aux:%i lq:%i\n", 
+				sbusInfo.channel[0], sbusInfo.channel[1], sbusInfo.channel[2], sbusInfo.channel[3],
+				sbusInfo.channel[4], sbusInfo.channel[5], sbusInfo.channel[6], sbusInfo.channel[7]);
 	}
 	
 }
